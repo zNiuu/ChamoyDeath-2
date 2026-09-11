@@ -1,5 +1,6 @@
 package io.github.zniuu.chamoydeath.listeners;
 
+import io.github.zniuu.chamoydeath.DiscordNotifier;
 import io.github.zniuu.chamoydeath.StormManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
@@ -46,12 +47,14 @@ public class DeathBanListener implements Listener {
 
     private final JavaPlugin plugin;
     private final StormManager stormManager;
+    private final DiscordNotifier discordNotifier;
 
     private final Map<UUID, Location> ubicacionesMuerte = new HashMap<>();
 
-    public DeathBanListener(JavaPlugin plugin, StormManager stormManager) {
+    public DeathBanListener(JavaPlugin plugin, StormManager stormManager, DiscordNotifier discordNotifier) {
         this.plugin = plugin;
         this.stormManager = stormManager;
+        this.discordNotifier = discordNotifier;
     }
 
     @EventHandler
@@ -66,7 +69,9 @@ public class DeathBanListener implements Listener {
 
         ubicacionesMuerte.put(player.getUniqueId(), deathLocation.clone());
 
-        anunciarMuerte(player, deathLocation);
+        String razon = obtenerRazonMuerte(player);
+        anunciarMuerte(player, deathLocation, razon);
+        discordNotifier.enviarMuerte(player, deathLocation, razon);
 
         Component emoji = Component.text("🅰");
 
@@ -87,11 +92,11 @@ public class DeathBanListener implements Listener {
             @Override
             public void run() {
                 if (!player.isOp()) {
-                    String razon = "Baneado automáticamente al morir";
-                    Bukkit.getBanList(BanList.Type.NAME).addBan(player.getName(), razon, null, "ChamoyDeath");
+                    String banRazon = "Baneado automáticamente al morir";
+                    Bukkit.getBanList(BanList.Type.NAME).addBan(player.getName(), banRazon, null, "ChamoyDeath");
 
                     if (player.isOnline()) {
-                        player.kick(Component.text("§c¡GG!" + razon));
+                        player.kick(Component.text("§c¡GG!" + banRazon));
                     }
                 }
 
@@ -169,8 +174,7 @@ public class DeathBanListener implements Listener {
         return "Totem de la Inmortalidad";
     }
 
-    private void anunciarMuerte(Player player, Location loc) {
-        String razon = obtenerRazonMuerte(player);
+    private void anunciarMuerte(Player player, Location loc, String razon) {
         String texto = "[ChamoyGod] El jugador " + player.getName() + " ha muerto por " + razon
                 + " en las coordenadas X: " + loc.getBlockX()
                 + " Y: " + loc.getBlockY()
@@ -226,7 +230,7 @@ public class DeathBanListener implements Listener {
     }
 
     private void colocarCofresDobles(Location loc) {
-        int[][] offsets = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}; // {dx, dz}
+        int[][] offsets = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
         for (int[] offset : offsets) {
             Location segundo = loc.clone().add(offset[0], 0, offset[1]);
@@ -247,20 +251,20 @@ public class DeathBanListener implements Listener {
         if (dx != 0) {
             facing = BlockFace.SOUTH;
             if (dx > 0) {
-                tipoOriginal = Chest.Type.LEFT;
-                tipoSegundo = Chest.Type.RIGHT;
-            } else {
                 tipoOriginal = Chest.Type.RIGHT;
                 tipoSegundo = Chest.Type.LEFT;
+            } else {
+                tipoOriginal = Chest.Type.LEFT;
+                tipoSegundo = Chest.Type.RIGHT;
             }
         } else {
             facing = BlockFace.WEST;
             if (dz > 0) {
-                tipoOriginal = Chest.Type.LEFT;
-                tipoSegundo = Chest.Type.RIGHT;
-            } else {
                 tipoOriginal = Chest.Type.RIGHT;
                 tipoSegundo = Chest.Type.LEFT;
+            } else {
+                tipoOriginal = Chest.Type.LEFT;
+                tipoSegundo = Chest.Type.RIGHT;
             }
         }
 

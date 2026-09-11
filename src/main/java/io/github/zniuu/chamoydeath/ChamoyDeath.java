@@ -21,11 +21,14 @@ public class ChamoyDeath extends JavaPlugin {
     public void onEnable() {
         System.out.println("ChamoyDeath activado");
 
+        saveDefaultConfig(); // genera config.yml (webhook de Discord) si no existe
+
         getCommand("Ejemplo").setExecutor(new EjemploCMD());
 
         StormManager stormManager = new StormManager(this);
+        DiscordNotifier discordNotifier = new DiscordNotifier(this);
 
-        getServer().getPluginManager().registerEvents(new DeathBanListener(this, stormManager), this);
+        getServer().getPluginManager().registerEvents(new DeathBanListener(this, stormManager, discordNotifier), this);
 
         getDataFolder().mkdirs();
 
@@ -34,7 +37,6 @@ public class ChamoyDeath extends JavaPlugin {
 
         if (teamManager.getAllTeams().isEmpty()) {
             teamManager.createTeam("Azules", TextColor.fromHexString("#4498DB"));
-
         }
 
         chatModeManager = new ChatModeManager();

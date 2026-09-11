@@ -4,6 +4,14 @@ main: io.github.zniuu.chamoydeath.ChamoyDeath
 author: zNiuu
 api-version: 1.21
 commands:
+  Ejemplo:
+    description: Comando de ejemplo
   staff:
     description: Comandos de staff de ChamoyDeath
-    usage: /staff chamoyrain <on <minutos>|off>
+    usage: /staff <chamoyrain <on <minutos>|off>|team <join <team> <jugador>|list>|rank give <rango> <jugador>>
+  cd:
+    description: Cambia tu modo de chat (global o team)
+    usage: /cd chat <global|team>
+  cteams:
+    description: Gestiona teams de jugadores
+    usage: /cteams <create|delete|join|leave|list>

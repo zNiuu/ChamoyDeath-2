@@ -1,9 +1,21 @@
 package io.github.zniuu.chamoydeath;
 
+import io.github.zniuu.chamoydeath.chat.ChatModeManager;
+import io.github.zniuu.chamoydeath.listeners.ChatListener;
 import io.github.zniuu.chamoydeath.listeners.DeathBanListener;
+import io.github.zniuu.chamoydeath.listeners.PlayerListener;
+import io.github.zniuu.chamoydeath.ranks.RankManager;
+import io.github.zniuu.chamoydeath.teams.TeamManager;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public class ChamoyDeath extends JavaPlugin {
+
+    private TeamManager teamManager;
+    private ChatModeManager chatModeManager;
+    private RankManager rankManager;
 
     @Override
     public void onEnable() {
@@ -14,12 +26,51 @@ public class ChamoyDeath extends JavaPlugin {
         StormManager stormManager = new StormManager(this);
 
         getServer().getPluginManager().registerEvents(new DeathBanListener(this, stormManager), this);
-        getCommand("staff").setExecutor(new StaffCommand(stormManager));
+
+        getDataFolder().mkdirs();
+
+        teamManager = new TeamManager();
+        teamManager.load(new File(getDataFolder(), "teams.yml"));
+
+        if (teamManager.getAllTeams().isEmpty()) {
+            teamManager.createTeam("Azules", TextColor.fromHexString("#4498DB"));
+
+        }
+
+        chatModeManager = new ChatModeManager();
+
+        // --- Rangos ---
+        rankManager = new RankManager();
+        rankManager.load(new File(getDataFolder(), "ranks.yml"));
+
+        getServer().getPluginManager().registerEvents(new PlayerListener(rankManager), this);
+
+        getServer().getOnlinePlayers().forEach(rankManager::actualizarVisual);
+
+        getServer().getPluginManager().registerEvents(new ChatListener(teamManager, chatModeManager, rankManager), this);
+
+        StaffCommand staffCommand = new StaffCommand(stormManager, teamManager, rankManager);
+        getCommand("staff").setExecutor(staffCommand);
+        getCommand("staff").setTabCompleter(staffCommand);
+
+        CDCommand cdCommand = new CDCommand(chatModeManager);
+        getCommand("cd").setExecutor(cdCommand);
+        getCommand("cd").setTabCompleter(cdCommand);
+
+        TeamCommand teamCommand = new TeamCommand(teamManager);
+        getCommand("cteams").setExecutor(teamCommand);
+        getCommand("cteams").setTabCompleter(teamCommand);
     }
 
     @Override
     public void onDisable() {
         System.out.println("ChamoyDeath desactivado");
+
+        if (teamManager != null) {
+            teamManager.save(new File(getDataFolder(), "teams.yml"));
+        }
+        if (rankManager != null) {
+            rankManager.save(new File(getDataFolder(), "ranks.yml"));
+        }
     }
 }
-

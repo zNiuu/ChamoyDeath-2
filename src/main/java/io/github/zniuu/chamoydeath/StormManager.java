@@ -43,9 +43,7 @@ public class StormManager {
     public void iniciarOSumarTormenta(World world, int nuevaDuracionSegundos) {
         StormState estado = tormentasActivas.get(world);
 
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            online.playSound(online.getLocation(), "minecraft:block.end_portal.spawn", SoundCategory.NEUTRAL, 3.0f, 1.5f);
-        }
+        reproducirSonidoInicioTormenta();
 
         if (estado != null) {
             estado.restanteSegundos += nuevaDuracionSegundos;
@@ -145,7 +143,34 @@ public class StormManager {
             online.sendMessage(Component.text("[ChamoyGod] El tormento del chamoy a finalizado", NamedTextColor.GRAY));
         }
 
+        reproducirSonidoFinTormenta();
+
         tormentasActivas.remove(world);
+    }
+
+    private void reproducirSonidoInicioTormenta() {
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            online.playSound(online.getLocation(), "minecraft:entity.breeze.jump", SoundCategory.MASTER, 1000f, 0.3f);
+        }
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                online.playSound(online.getLocation(), "minecraft:entity.breeze.jump", SoundCategory.MASTER, 1000f, 0.3f);
+                online.playSound(online.getLocation(), "minecraft:entity.breeze.death", SoundCategory.MASTER, 1000f, 0.6f);
+                online.playSound(online.getLocation(), "minecraft:entity.warden.death", SoundCategory.AMBIENT, 3f, 0.6f);
+            }
+        }, 10L);
+    }
+
+    private void reproducirSonidoFinTormenta() {
+        for (int i = 0; i < 3; i++) {
+            long delay = i * 10L;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (Player online : Bukkit.getOnlinePlayers()) {
+                    online.playSound(online.getLocation(), "minecraft:block.bell.use", SoundCategory.AMBIENT, 100f, 1.3f);
+                }
+            }, delay);
+        }
     }
 
     public void mostrarBossBarSiHay(Player player) {

@@ -1,0 +1,9 @@
+name: ChamoyDeath
+version: 1.1
+main: io.github.zniuu.chamoydeath.ChamoyDeath
+author: zNiuu
+api-version: 1.21
+commands:
+  staff:
+    description: Comandos de staff de ChamoyDeath
+    usage: /staff chamoyrain <on <minutos>|off>

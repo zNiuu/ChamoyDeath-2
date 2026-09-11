@@ -21,7 +21,7 @@ public class ChamoyDeath extends JavaPlugin {
     public void onEnable() {
         System.out.println("ChamoyDeath activado");
 
-        saveDefaultConfig(); // genera config.yml (webhook de Discord) si no existe
+        saveDefaultConfig();
 
         getCommand("Ejemplo").setExecutor(new EjemploCMD());
 
@@ -41,8 +41,8 @@ public class ChamoyDeath extends JavaPlugin {
 
         chatModeManager = new ChatModeManager();
 
-        // --- Rangos ---
-        rankManager = new RankManager();
+        // --- Rangos (ahora depende de teamManager para mostrar el team al lado del nombre) ---
+        rankManager = new RankManager(teamManager);
         rankManager.load(new File(getDataFolder(), "ranks.yml"));
 
         getServer().getPluginManager().registerEvents(new PlayerListener(rankManager), this);
@@ -59,7 +59,7 @@ public class ChamoyDeath extends JavaPlugin {
         getCommand("cd").setExecutor(cdCommand);
         getCommand("cd").setTabCompleter(cdCommand);
 
-        TeamCommand teamCommand = new TeamCommand(teamManager);
+        TeamCommand teamCommand = new TeamCommand(teamManager, rankManager);
         getCommand("cteams").setExecutor(teamCommand);
         getCommand("cteams").setTabCompleter(teamCommand);
     }

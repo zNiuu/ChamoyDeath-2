@@ -1,5 +1,7 @@
 package io.github.zniuu.chamoydeath.ranks;
 
+import io.github.zniuu.chamoydeath.teams.PlayerTeam;
+import io.github.zniuu.chamoydeath.teams.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -13,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 public class RankManager {
@@ -20,6 +23,11 @@ public class RankManager {
     public static final Rank RANGO_POR_DEFECTO = Rank.VIVO;
 
     private final Map<UUID, Rank> rangos = new HashMap<>();
+    private final TeamManager teamManager;
+
+    public RankManager(TeamManager teamManager) {
+        this.teamManager = teamManager;
+    }
 
     public Rank getRank(UUID uuid) {
         return rangos.getOrDefault(uuid, RANGO_POR_DEFECTO);
@@ -39,10 +47,19 @@ public class RankManager {
 
     public Component nombreConRango(Player player) {
         Rank rank = getRank(player.getUniqueId());
-        return Component.text("[", rank.getColor())
+
+        Component nombre = Component.text("[", rank.getColor())
                 .append(Component.text(rank.getIcon(), NamedTextColor.WHITE))
                 .append(Component.text("] ", rank.getColor()))
                 .append(Component.text(player.getName(), rank.getColor()));
+
+        Optional<PlayerTeam> teamOpt = teamManager.getPlayerTeam(player.getUniqueId());
+        if (teamOpt.isPresent()) {
+            // El team va a la derecha, siempre en blanco, sin importar el color del rango o del team
+            nombre = nombre.append(Component.text(" " + teamOpt.get().getName(), NamedTextColor.WHITE));
+        }
+
+        return nombre;
     }
 
     public void actualizarVisual(Player player) {

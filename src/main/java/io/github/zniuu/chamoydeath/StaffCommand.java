@@ -151,6 +151,7 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
 
             PlayerTeam team = teamOpt.get();
             teamManager.addPlayerToTeam(target.getUniqueId(), team);
+            rankManager.actualizarVisual(target);
 
             sender.sendMessage(Component.text(
                     target.getName() + " fue añadido al team " + team.getName() + ".", team.getColor()));

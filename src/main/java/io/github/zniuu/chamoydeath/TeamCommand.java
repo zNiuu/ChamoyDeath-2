@@ -1,5 +1,6 @@
 package io.github.zniuu.chamoydeath;
 
+import io.github.zniuu.chamoydeath.ranks.RankManager;
 import io.github.zniuu.chamoydeath.teams.PlayerTeam;
 import io.github.zniuu.chamoydeath.teams.TeamManager;
 import net.kyori.adventure.text.Component;
@@ -19,9 +20,11 @@ import java.util.Optional;
 public class TeamCommand implements CommandExecutor, TabCompleter {
 
     private final TeamManager teamManager;
+    private final RankManager rankManager;
 
-    public TeamCommand(TeamManager teamManager) {
+    public TeamCommand(TeamManager teamManager, RankManager rankManager) {
         this.teamManager = teamManager;
+        this.rankManager = rankManager;
     }
 
     @Override
@@ -87,6 +90,7 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 teamManager.addPlayerToTeam(player.getUniqueId(), teamOpt.get());
+                rankManager.actualizarVisual(player);
                 player.sendMessage(Component.text(
                         "Te uniste al team " + teamOpt.get().getName() + ".", teamOpt.get().getColor()));
             }
@@ -97,6 +101,7 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 teamManager.removePlayerFromCurrentTeam(player.getUniqueId());
+                rankManager.actualizarVisual(player);
                 player.sendMessage(Component.text("Saliste de tu team.", NamedTextColor.GRAY));
             }
 

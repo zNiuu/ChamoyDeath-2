@@ -15,3 +15,6 @@ commands:
   cteams:
     description: Gestiona teams de jugadores
     usage: /cteams <create|delete|join|leave|list>
+  misiones:
+    description: Abre el menú de misiones
+    usage: /misiones

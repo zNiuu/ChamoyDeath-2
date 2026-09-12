@@ -4,6 +4,9 @@ import io.github.zniuu.chamoydeath.chat.ChatModeManager;
 import io.github.zniuu.chamoydeath.listeners.ChatListener;
 import io.github.zniuu.chamoydeath.listeners.DeathBanListener;
 import io.github.zniuu.chamoydeath.listeners.PlayerListener;
+import io.github.zniuu.chamoydeath.listeners.VillagerSpawnListener;
+import io.github.zniuu.chamoydeath.missions.MisionGUI;
+import io.github.zniuu.chamoydeath.missions.MisionManager;
 import io.github.zniuu.chamoydeath.ranks.RankManager;
 import io.github.zniuu.chamoydeath.teams.TeamManager;
 import net.kyori.adventure.text.format.TextColor;
@@ -16,6 +19,7 @@ public class ChamoyDeath extends JavaPlugin {
     private TeamManager teamManager;
     private ChatModeManager chatModeManager;
     private RankManager rankManager;
+    private MisionManager misionManager;
 
     @Override
     public void onEnable() {
@@ -29,6 +33,7 @@ public class ChamoyDeath extends JavaPlugin {
         DiscordNotifier discordNotifier = new DiscordNotifier(this);
 
         getServer().getPluginManager().registerEvents(new DeathBanListener(this, stormManager, discordNotifier), this);
+        getServer().getPluginManager().registerEvents(new VillagerSpawnListener(), this);
 
         getDataFolder().mkdirs();
 
@@ -62,6 +67,14 @@ public class ChamoyDeath extends JavaPlugin {
         TeamCommand teamCommand = new TeamCommand(teamManager, rankManager);
         getCommand("cteams").setExecutor(teamCommand);
         getCommand("cteams").setTabCompleter(teamCommand);
+
+        // --- Misiones ---
+        misionManager = new MisionManager(this);
+        MisionGUI misionGUI = new MisionGUI(misionManager);
+        getServer().getPluginManager().registerEvents(misionGUI, this);
+
+        MisionCommand misionCommand = new MisionCommand(misionGUI);
+        getCommand("misiones").setExecutor(misionCommand);
     }
 
     @Override

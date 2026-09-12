@@ -1,5 +1,6 @@
 package io.github.zniuu.chamoydeath;
 
+import io.github.zniuu.chamoydeath.missions.MisionManager;
 import io.github.zniuu.chamoydeath.ranks.Rank;
 import io.github.zniuu.chamoydeath.ranks.RankManager;
 import io.github.zniuu.chamoydeath.teams.PlayerTeam;
@@ -7,6 +8,7 @@ import io.github.zniuu.chamoydeath.teams.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -25,11 +27,13 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
     private final StormManager stormManager;
     private final TeamManager teamManager;
     private final RankManager rankManager;
+    private final MisionManager misionManager;
 
-    public StaffCommand(StormManager stormManager, TeamManager teamManager, RankManager rankManager) {
+    public StaffCommand(StormManager stormManager, TeamManager teamManager, RankManager rankManager, MisionManager misionManager) {
         this.stormManager = stormManager;
         this.teamManager = teamManager;
         this.rankManager = rankManager;
+        this.misionManager = misionManager;
     }
 
     @Override
@@ -48,6 +52,7 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
             case "chamoyrain" -> handleChamoyRain(sender, args);
             case "team" -> handleTeam(sender, args);
             case "rank" -> handleRank(sender, args);
+            case "mision" -> handleMision(sender, args);
             default -> sendHelp(sender);
         }
 
@@ -66,6 +71,8 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
                 .append(Component.text(" - Muestra los teams existentes", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("/staff rank give <rango> <jugador>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Asigna un rango a un jugador", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/staff mision reset <jugador> [obligatoria|opcional]", NamedTextColor.YELLOW)
+                .append(Component.text(" - Reinicia el reclamo de misiones (sin argumento extra, resetea ambas)", NamedTextColor.GRAY)));
     }
 
     private void handleChamoyRain(CommandSender sender, String[] args) {
@@ -195,17 +202,56 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
                 "Tu rango ahora es " + rank.getIcon() + " " + rank.getDisplayName() + ".", rank.getColor()));
     }
 
+    private void handleMision(CommandSender sender, String[] args) {
+        if (args.length < 3 || !args[1].equalsIgnoreCase("reset")) {
+            sender.sendMessage(Component.text("Uso: /staff mision reset <jugador> [obligatoria|opcional]", NamedTextColor.GRAY));
+            return;
+        }
+
+        @SuppressWarnings("deprecation")
+        OfflinePlayer target = Bukkit.getOfflinePlayer(args[2]);
+        if (!target.hasPlayedBefore() && !target.isOnline()) {
+            sender.sendMessage(Component.text("Ese jugador no existe o nunca entró al server.", NamedTextColor.RED));
+            return;
+        }
+
+        String tipo = args.length >= 4 ? args[3].toLowerCase() : "todas";
+        String nombre = target.getName() != null ? target.getName() : args[2];
+
+        switch (tipo) {
+            case "obligatoria" -> {
+                misionManager.resetearObligatoria(target.getUniqueId());
+                sender.sendMessage(Component.text(
+                        "Se reinició la misión obligatoria de " + nombre + ".", NamedTextColor.GREEN));
+            }
+            case "opcional" -> {
+                misionManager.resetearOpcional(target.getUniqueId());
+                sender.sendMessage(Component.text(
+                        "Se reinició la misión opcional de " + nombre + ".", NamedTextColor.GREEN));
+            }
+            case "todas" -> {
+                misionManager.resetearTodo(target.getUniqueId());
+                sender.sendMessage(Component.text(
+                        "Se reiniciaron todas las misiones de " + nombre + ".", NamedTextColor.GREEN));
+            }
+            default -> sender.sendMessage(Component.text(
+                    "Uso: /staff mision reset <jugador> [obligatoria|opcional]", NamedTextColor.GRAY));
+        }
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            completions.addAll(Arrays.asList("chamoyrain", "team", "rank"));
+            completions.addAll(Arrays.asList("chamoyrain", "team", "rank", "mision"));
         } else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("chamoyrain")) {
                 completions.addAll(Arrays.asList("on", "off"));
             } else if (args[0].equalsIgnoreCase("team")) {
                 completions.addAll(Arrays.asList("join", "list"));
+            } else if (args[0].equalsIgnoreCase("mision")) {
+                completions.add("reset");
             } else if (args[0].equalsIgnoreCase("rank")) {
                 completions.add("give");
             }
@@ -215,6 +261,10 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList()));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("rank") && args[1].equalsIgnoreCase("give")) {
             for (Rank rank : Rank.values()) completions.add(rank.getDisplayName());
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("mision") && args[1].equalsIgnoreCase("reset")) {
+            Bukkit.getOnlinePlayers().forEach(p -> completions.add(p.getName()));
+        } else if (args.length == 4 && args[0].equalsIgnoreCase("mision") && args[1].equalsIgnoreCase("reset")) {
+            completions.addAll(Arrays.asList("obligatoria", "opcional"));
         } else if (args.length == 4 && args[0].equalsIgnoreCase("team") && args[1].equalsIgnoreCase("join")) {
             Bukkit.getOnlinePlayers().forEach(p -> completions.add(p.getName()));
         } else if (args.length == 4 && args[0].equalsIgnoreCase("rank") && args[1].equalsIgnoreCase("give")) {

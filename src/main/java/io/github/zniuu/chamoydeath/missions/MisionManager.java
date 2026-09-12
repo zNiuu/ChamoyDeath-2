@@ -2,6 +2,7 @@ package io.github.zniuu.chamoydeath.missions;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Statistic;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -34,6 +35,7 @@ public class MisionManager {
 
     private final JavaPlugin plugin;
     private final File archivo;
+    private final File archivoProgreso;
     private final Set<UUID> obligatoriaReclamada = new HashSet<>();
     private final Set<UUID> opcionalReclamada = new HashSet<>();
 
@@ -56,7 +58,12 @@ public class MisionManager {
     public MisionManager(JavaPlugin plugin) {
         this.plugin = plugin;
         this.archivo = new File(plugin.getDataFolder(), "misiones.yml");
+        this.archivoProgreso = new File(plugin.getDataFolder(), "progreso.yml");
         cargar();
+
+        // Refresca el progreso de todos los jugadores conectados cada 5 minutos,
+        // aunque no hayan abierto el menú de misiones.
+        Bukkit.getScheduler().runTaskTimer(plugin, this::actualizarProgresoTodosOnline, 20L * 30, 20L * 60 * 5);
     }
 
     // ---------- Misión obligatoria: set de diamante ----------
@@ -80,10 +87,6 @@ public class MisionManager {
     public ResultadoReclamo reclamarObligatoria(Player player) {
         if (yaReclamoObligatoria(player)) return ResultadoReclamo.YA_RECLAMADA;
         if (!cumpleObligatoria(player)) return ResultadoReclamo.INCOMPLETA;
-
-        for (Material pieza : SET_DIAMANTE) {
-            quitarCantidad(player, pieza, 1);
-        }
 
         List<ItemStack> recompensa = new ArrayList<>();
         recompensa.add(libro("Protección IV / Unbreaking III / Mending",
@@ -141,11 +144,6 @@ public class MisionManager {
         if (yaReclamoOpcional(player)) return ResultadoReclamo.YA_RECLAMADA;
         if (!cumpleOpcional(player)) return ResultadoReclamo.INCOMPLETA;
 
-        // Los kills son estadísticas del jugador (no se "descuentan"); los items
-        // coleccionables sí se entregan/consumen como parte de la misión.
-        quitarCantidad(player, Material.TOTEM_OF_UNDYING, TOTEMS_REQUERIDOS);
-        quitarCantidad(player, Material.OMINOUS_TRIAL_KEY, LLAVES_REQUERIDAS);
-
         List<ItemStack> recompensa = new ArrayList<>();
         recompensa.add(libro("Eficiencia V / Unbreaking III / Mending / Silk Touch",
                 enc(Enchantment.EFFICIENCY, 5, Enchantment.UNBREAKING, 3, Enchantment.MENDING, 1,
@@ -183,10 +181,6 @@ public class MisionManager {
         return total;
     }
 
-    private void quitarCantidad(Player player, Material material, int cantidad) {
-        player.getInventory().removeItem(new ItemStack(material, cantidad));
-    }
-
     private void entregar(Player player, List<ItemStack> items) {
         Map<Integer, ItemStack> sobrante = player.getInventory().addItem(items.toArray(new ItemStack[0]));
         for (ItemStack item : sobrante.values()) {
@@ -212,6 +206,61 @@ public class MisionManager {
         meta.displayName(Component.text(nombre, NamedTextColor.AQUA));
         libro.setItemMeta(meta);
         return libro;
+    }
+
+    // ---------- progreso.yml: para que el staff pueda ver el avance de cada jugador ----------
+
+    /** Actualiza el progreso de un solo jugador en progreso.yml (se llama al abrir el menú). */
+    public void actualizarProgreso(Player player) {
+        FileConfiguration config = cargarProgreso();
+        escribirProgreso(config, player);
+        guardarProgreso(config);
+    }
+
+    /** Actualiza el progreso de todos los jugadores conectados de una sola vez. */
+    private void actualizarProgresoTodosOnline() {
+        FileConfiguration config = cargarProgreso();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            escribirProgreso(config, online);
+        }
+        guardarProgreso(config);
+    }
+
+    private FileConfiguration cargarProgreso() {
+        return archivoProgreso.exists() ? YamlConfiguration.loadConfiguration(archivoProgreso) : new YamlConfiguration();
+    }
+
+    private void escribirProgreso(FileConfiguration config, Player player) {
+        String base = "jugadores." + player.getUniqueId();
+
+        config.set(base + ".nombre", player.getName());
+
+        config.set(base + ".obligatoria.piezas_actuales", contarPiezasDiamante(player));
+        config.set(base + ".obligatoria.piezas_requeridas", SET_DIAMANTE.length);
+        config.set(base + ".obligatoria.completa", cumpleObligatoria(player));
+        config.set(base + ".obligatoria.reclamada", yaReclamoObligatoria(player));
+
+        config.set(base + ".opcional.ravagers", killsRavager(player));
+        config.set(base + ".opcional.ravagers_requeridos", RAVAGERS_REQUERIDOS);
+        config.set(base + ".opcional.piglin_brutes", killsPiglinBrute(player));
+        config.set(base + ".opcional.piglin_brutes_requeridos", PIGLIN_BRUTES_REQUERIDOS);
+        config.set(base + ".opcional.breezes", killsBreeze(player));
+        config.set(base + ".opcional.breezes_requeridos", BREEZES_REQUERIDOS);
+        config.set(base + ".opcional.totems", totemsEnInventario(player));
+        config.set(base + ".opcional.totems_requeridos", TOTEMS_REQUERIDOS);
+        config.set(base + ".opcional.llaves", llavesEnInventario(player));
+        config.set(base + ".opcional.llaves_requeridas", LLAVES_REQUERIDAS);
+        config.set(base + ".opcional.completa", cumpleOpcional(player));
+        config.set(base + ".opcional.reclamada", yaReclamoOpcional(player));
+    }
+
+    private void guardarProgreso(FileConfiguration config) {
+        try {
+            plugin.getDataFolder().mkdirs();
+            config.save(archivoProgreso);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // ---------- Persistencia (quién ya reclamó cada misión) ----------
@@ -256,5 +305,24 @@ public class MisionManager {
 
     public enum ResultadoReclamo {
         OK, INCOMPLETA, YA_RECLAMADA
+    }
+
+    // ---------- Reseteo manual (para testing / soporte de staff) ----------
+
+    /** Permite volver a reclamar la obligatoria (no toca el inventario ni el progreso actual). */
+    public void resetearObligatoria(UUID uuid) {
+        obligatoriaReclamada.remove(uuid);
+        guardar();
+    }
+
+    /** Permite volver a reclamar la opcional. */
+    public void resetearOpcional(UUID uuid) {
+        opcionalReclamada.remove(uuid);
+        guardar();
+    }
+
+    public void resetearTodo(UUID uuid) {
+        resetearObligatoria(uuid);
+        resetearOpcional(uuid);
     }
 }

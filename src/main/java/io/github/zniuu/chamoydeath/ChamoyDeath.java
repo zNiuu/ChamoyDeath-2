@@ -56,7 +56,15 @@ public class ChamoyDeath extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new ChatListener(teamManager, chatModeManager, rankManager), this);
 
-        StaffCommand staffCommand = new StaffCommand(stormManager, teamManager, rankManager);
+        // --- Misiones ---
+        misionManager = new MisionManager(this);
+        MisionGUI misionGUI = new MisionGUI(misionManager);
+        getServer().getPluginManager().registerEvents(misionGUI, this);
+
+        MisionCommand misionCommand = new MisionCommand(misionGUI);
+        getCommand("misiones").setExecutor(misionCommand);
+
+        StaffCommand staffCommand = new StaffCommand(stormManager, teamManager, rankManager, misionManager);
         getCommand("staff").setExecutor(staffCommand);
         getCommand("staff").setTabCompleter(staffCommand);
 
@@ -67,14 +75,6 @@ public class ChamoyDeath extends JavaPlugin {
         TeamCommand teamCommand = new TeamCommand(teamManager, rankManager);
         getCommand("cteams").setExecutor(teamCommand);
         getCommand("cteams").setTabCompleter(teamCommand);
-
-        // --- Misiones ---
-        misionManager = new MisionManager(this);
-        MisionGUI misionGUI = new MisionGUI(misionManager);
-        getServer().getPluginManager().registerEvents(misionGUI, this);
-
-        MisionCommand misionCommand = new MisionCommand(misionGUI);
-        getCommand("misiones").setExecutor(misionCommand);
     }
 
     @Override

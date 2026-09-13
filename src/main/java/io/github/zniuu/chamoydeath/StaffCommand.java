@@ -1,6 +1,8 @@
 package io.github.zniuu.chamoydeath;
 
-import io.github.zniuu.chamoydeath.missions.MisionManager;
+import io.github.zniuu.chamoydeath.items.GiveGUI;
+import io.github.zniuu.chamoydeath.mobs.SculkMobManager;
+import io.github.zniuu.chamoydeath.mobs.SculkMobType;
 import io.github.zniuu.chamoydeath.ranks.Rank;
 import io.github.zniuu.chamoydeath.ranks.RankManager;
 import io.github.zniuu.chamoydeath.teams.PlayerTeam;
@@ -8,7 +10,6 @@ import io.github.zniuu.chamoydeath.teams.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -27,13 +28,14 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
     private final StormManager stormManager;
     private final TeamManager teamManager;
     private final RankManager rankManager;
-    private final MisionManager misionManager;
+    private final SculkMobManager sculkMobManager;
 
-    public StaffCommand(StormManager stormManager, TeamManager teamManager, RankManager rankManager, MisionManager misionManager) {
+    public StaffCommand(StormManager stormManager, TeamManager teamManager, RankManager rankManager,
+                        SculkMobManager sculkMobManager) {
         this.stormManager = stormManager;
         this.teamManager = teamManager;
         this.rankManager = rankManager;
-        this.misionManager = misionManager;
+        this.sculkMobManager = sculkMobManager;
     }
 
     @Override
@@ -52,7 +54,8 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
             case "chamoyrain" -> handleChamoyRain(sender, args);
             case "team" -> handleTeam(sender, args);
             case "rank" -> handleRank(sender, args);
-            case "mision" -> handleMision(sender, args);
+            case "give" -> handleGive(sender);
+            case "summon" -> handleSummon(sender, args);
             default -> sendHelp(sender);
         }
 
@@ -71,8 +74,10 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
                 .append(Component.text(" - Muestra los teams existentes", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("/staff rank give <rango> <jugador>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Asigna un rango a un jugador", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("/staff mision reset <jugador> [obligatoria|opcional]", NamedTextColor.YELLOW)
-                .append(Component.text(" - Reinicia el reclamo de misiones (sin argumento extra, resetea ambas)", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/staff give", NamedTextColor.YELLOW)
+                .append(Component.text(" - Abre la GUI para darte ítems especiales", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/staff summon <mob>", NamedTextColor.YELLOW)
+                .append(Component.text(" - Invoca un mob sculk cerca tuyo", NamedTextColor.GRAY)));
     }
 
     private void handleChamoyRain(CommandSender sender, String[] args) {
@@ -202,41 +207,36 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
                 "Tu rango ahora es " + rank.getIcon() + " " + rank.getDisplayName() + ".", rank.getColor()));
     }
 
-    private void handleMision(CommandSender sender, String[] args) {
-        if (args.length < 3 || !args[1].equalsIgnoreCase("reset")) {
-            sender.sendMessage(Component.text("Uso: /staff mision reset <jugador> [obligatoria|opcional]", NamedTextColor.GRAY));
+    private void handleGive(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("Este comando solo puede usarse en el juego.", NamedTextColor.RED));
+            return;
+        }
+        GiveGUI.abrir(player);
+    }
+
+    private void handleSummon(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("Este comando solo puede usarse en el juego.", NamedTextColor.RED));
             return;
         }
 
-        @SuppressWarnings("deprecation")
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[2]);
-        if (!target.hasPlayedBefore() && !target.isOnline()) {
-            sender.sendMessage(Component.text("Ese jugador no existe o nunca entró al server.", NamedTextColor.RED));
+        if (args.length < 2) {
+            sender.sendMessage(Component.text(
+                    "Uso: /staff summon <sculk_spider|sculk_zombie|sculk_creeper|sculk_skeleton>", NamedTextColor.GRAY));
             return;
         }
 
-        String tipo = args.length >= 4 ? args[3].toLowerCase() : "todas";
-        String nombre = target.getName() != null ? target.getName() : args[2];
-
-        switch (tipo) {
-            case "obligatoria" -> {
-                misionManager.resetearObligatoria(target.getUniqueId());
-                sender.sendMessage(Component.text(
-                        "Se reinició la misión obligatoria de " + nombre + ".", NamedTextColor.GREEN));
-            }
-            case "opcional" -> {
-                misionManager.resetearOpcional(target.getUniqueId());
-                sender.sendMessage(Component.text(
-                        "Se reinició la misión opcional de " + nombre + ".", NamedTextColor.GREEN));
-            }
-            case "todas" -> {
-                misionManager.resetearTodo(target.getUniqueId());
-                sender.sendMessage(Component.text(
-                        "Se reiniciaron todas las misiones de " + nombre + ".", NamedTextColor.GREEN));
-            }
-            default -> sender.sendMessage(Component.text(
-                    "Uso: /staff mision reset <jugador> [obligatoria|opcional]", NamedTextColor.GRAY));
+        Optional<SculkMobType> tipoOpt = SculkMobType.fromComandoNombre(args[1]);
+        if (tipoOpt.isEmpty()) {
+            sender.sendMessage(Component.text(
+                    "Mob inválido. Usa: sculk_spider, sculk_zombie, sculk_creeper o sculk_skeleton.", NamedTextColor.RED));
+            return;
         }
+
+        SculkMobType tipo = tipoOpt.get();
+        sculkMobManager.invocar(player.getLocation(), tipo);
+        sender.sendMessage(Component.text("Invocado " + tipo.getDisplayName() + " cerca tuyo.", NamedTextColor.GREEN));
     }
 
     @Override
@@ -244,16 +244,16 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            completions.addAll(Arrays.asList("chamoyrain", "team", "rank", "mision"));
+            completions.addAll(Arrays.asList("chamoyrain", "team", "rank", "give", "summon"));
         } else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("chamoyrain")) {
                 completions.addAll(Arrays.asList("on", "off"));
             } else if (args[0].equalsIgnoreCase("team")) {
                 completions.addAll(Arrays.asList("join", "list"));
-            } else if (args[0].equalsIgnoreCase("mision")) {
-                completions.add("reset");
             } else if (args[0].equalsIgnoreCase("rank")) {
                 completions.add("give");
+            } else if (args[0].equalsIgnoreCase("summon")) {
+                for (SculkMobType tipo : SculkMobType.values()) completions.add(tipo.getComandoNombre());
             }
         } else if (args.length == 3 && args[0].equalsIgnoreCase("team") && args[1].equalsIgnoreCase("join")) {
             completions.addAll(teamManager.getAllTeams().stream()
@@ -261,10 +261,6 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList()));
         } else if (args.length == 3 && args[0].equalsIgnoreCase("rank") && args[1].equalsIgnoreCase("give")) {
             for (Rank rank : Rank.values()) completions.add(rank.getDisplayName());
-        } else if (args.length == 3 && args[0].equalsIgnoreCase("mision") && args[1].equalsIgnoreCase("reset")) {
-            Bukkit.getOnlinePlayers().forEach(p -> completions.add(p.getName()));
-        } else if (args.length == 4 && args[0].equalsIgnoreCase("mision") && args[1].equalsIgnoreCase("reset")) {
-            completions.addAll(Arrays.asList("obligatoria", "opcional"));
         } else if (args.length == 4 && args[0].equalsIgnoreCase("team") && args[1].equalsIgnoreCase("join")) {
             Bukkit.getOnlinePlayers().forEach(p -> completions.add(p.getName()));
         } else if (args.length == 4 && args[0].equalsIgnoreCase("rank") && args[1].equalsIgnoreCase("give")) {
